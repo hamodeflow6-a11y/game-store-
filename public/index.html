@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>متجر الألعاب</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto p-4">
+        <h1 class="text-4xl font-bold text-center mb-8 text-yellow-400">🎮 متجر الألعاب 🎮</h1>
+        
+        <div class="max-w-md mx-auto bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl mb-4">طلب جديد</h2>
+            <form id="orderForm">
+                <input type="text" id="game" placeholder="اسم اللعبة" class="w-full p-3 mb-3 bg-gray-700 rounded text-white" required>
+                <input type="text" id="playerId" placeholder="ID اللاعب" class="w-full p-3 mb-3 bg-gray-700 rounded text-white" required>
+                <input type="number" id="amount" placeholder="الكمية" class="w-full p-3 mb-3 bg-gray-700 rounded text-white" required>
+                <input type="text" id="whatsapp" placeholder="رقم واتساب" class="w-full p-3 mb-4 bg-gray-700 rounded text-white" required>
+                <button type="submit" class="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold p-3 rounded">
+                    إرسال الطلب
+                </button>
+            </form>
+            <p id="msg" class="mt-4 text-center"></p>
+        </div>
+
+        <div class="max-w-4xl mx-auto mt-10">
+            <h2 class="text-2xl mb-4">آخر الطلبات</h2>
+            <div id="orders" class="grid gap-4"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('orderForm');
+        const msg = document.getElementById('msg');
+        const ordersDiv = document.getElementById('orders');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            msg.textContent = 'جاري الإرسال...';
+            
+            const data = {
+                game: document.getElementById('game').value,
+                playerId: document.getElementById('playerId').value,
+                amount: document.getElementById('amount').value,
+                whatsapp: document.getElementById('whatsapp').value
+            };
+
+            try {
+                const res = await fetch('/api/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    msg.textContent = '✅ تم إرسال طلبك بنجاح';
+                    msg.className = 'mt-4 text-center text-green-400';
+                    form.reset();
+                    loadOrders();
+                } else {
+                    msg.textContent = '❌ حصل خطأ، حاول تاني';
+                    msg.className = 'mt-4 text-center text-red-400';
+                }
+            } catch (err) {
+                msg.textContent = '❌ فشل الاتصال بالسيرفر';
+                msg.className = 'mt-4 text-center text-red-400';
+            }
+        });
+
+        async function loadOrders() {
+            try {
+                const res = await fetch('/api/orders');
+                const orders = await res.json();
+                
+                ordersDiv.innerHTML = orders.map(order => `
+                    <div class="bg-gray-800 p-4 rounded-lg">
+                        <div class="flex justify-between">
+                            <span class="font-bold text-yellow-400">${order.game}</span>
+                            <span class="text-sm text-gray-400">${new Date(order.created_at).toLocaleString('ar')}</span>
+                        </div>
+                        <p>اللاعب: ${order.player_id}</p>
+                        <p>الكمية: ${order.amount}</p>
+                        <p>واتساب: ${order.whatsapp}</p>
+                    </div>
+                `).join('');
+            } catch (err) {
+                ordersDiv.innerHTML = '<p class="text-red-400">فشل تحميل الطلبات</p>';
+            }
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>
