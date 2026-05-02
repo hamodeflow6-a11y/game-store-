@@ -8,6 +8,11 @@ let orders = [];
 app.use(express.json());
 app.use(express.static('public'));
 
+// السطر الجديد دا هو الحل
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.post('/api/order', (req, res) => {
     const { game, playerId, amount, whatsapp } = req.body;
     
