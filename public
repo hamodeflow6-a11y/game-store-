@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>صالة أفراح النجوم - احجز الآن</title>
+    <style>
+        body { font-family: 'Cairo', sans-serif; background: #1a1a2e; color: #e6e6e6; padding: 20px; }
+       .container { max-width: 700px; margin: auto; background: #16213e; padding: 30px; border-radius: 20px; box-shadow: 0 0 20px #e94560; }
+        h1, h2 { text-align: center; color: #e94560; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #f7d778; }
+        input, select { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #0f3460; background: #0f3460; color: white; box-sizing: border-box; }
+       .package,.addon { background: #0f3460; padding: 15px; margin: 10px 0; border-radius: 10px; cursor: pointer; border: 2px solid transparent; }
+       .package.active,.addon.active { border-color: #e94560; background: #533483; }
+       .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        #invoice { background: #0f3460; padding: 20px; border-radius: 10px; margin-top: 20px; }
+       .pay-btn { width: 100%; padding: 15px; margin-top: 15px; border-radius: 8px; border: none; background: #e94560; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
+        #msg { text-align: center; margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✨ صالة أفراح النجوم ✨</h1>
+        <h2>نموذج حجز إلكتروني</h2>
+
+        <label>1. اختار تاريخ المناسبة:</label>
+        <input type="date" id="date">
+
+        <label>2. بياناتك:</label>
+        <input id="name" placeholder="الاسم الكامل">
+        <input id="phone" placeholder="رقم الواتساب">
+
+        <label>3. اختار الباقة:</label>
+        <div class="package" onclick="selectPackage('economic', this)">
+            <strong>الباقة الاقتصادية - 1,200,000 جنيه</strong><br>الصالة + كراسي + صوت أساسي
+        </div>
+        <div class="package" onclick="selectPackage('medium', this)">
+            <strong>الباقة المتوسطة - 3,000,000 جنيه</strong><br>+ كوشة + إضاءة + بوفيه + ضيافة
+        </div>
+        <div class="package" onclick="selectPackage('vip', this)">
+            <strong>باقة VIP - 6,000,000 جنيه</strong><br>+ ديكور كامل + تصوير + زفة + عشاء فاخر
+        </div>
+
+        <label>4. خدمات إضافية:</label>
+        <div class="grid">
+            <div class="addon" onclick="toggleAddon('kosha', this)">كوشة وورد +400 ألف</div>
+            <div class="addon" onclick="toggleAddon('photo', this)">تصوير +350 ألف</div>
+            <div class="addon" onclick="toggleAddon('buffet', this)">بوفيه مفتوح +800 ألف</div>
+            <div class="addon" onclick="toggleAddon('zaffa', this)">زفة + DJ +250 ألف</div>
+        </div>
+
+        <div id="invoice">
+            <h3>الفاتورة:</h3>
+            <div id="invoiceDetails">اختار باقة عشان تشوف السعر</div>
+            <h2 id="totalPrice">الإجمالي: 0 جنيه</h2>
+            <h2 id="depositPrice">العربون 50%: 0 جنيه</h2>
+        </div>
+
+        <button class="pay-btn" onclick="submitBooking()">احجز وادفع العربون الآن</button>
+        <p id="msg"></p>
+    </div>
+
+    <script>
+        let selectedPackage = '';
+        let selectedAddons = [];
+        let currentTotal = 0;
+        let currentDeposit = 0;
+
+        // نجيب الأيام المحجوزة ونقفلها في التقويم
+        async function loadBookedDates() {
+            const res = await fetch('/api/booked-dates');
+            const dates = await res.json();
+            const dateInput = document.getElementById('date');
+            dateInput.addEventListener('input', () => {
+                if (dates.includes(dateInput.value)) {
+                    alert('اليوم دا محجوز للأسف، اختار يوم تاني');
+                    dateInput.value = '';
+                }
+            });
+        }
+        loadBookedDates();
+
+        function selectPackage(type, element) {
+            selectedPackage = type;
+            document.querySelectorAll('.package').forEach(p => p.classList.remove('active'));
+            element.classList.add('active');
+            calculateTotal();
+        }
+
+        function toggleAddon(addon, element) {
+            element.classList.toggle('active');
+            if (selectedAddons.includes(addon)) {
+                selectedAddons = selectedAddons.filter(a => a!== addon);
+            } else {
+                selectedAddons.push(addon);
+            }
+            calculateTotal();
+        }
+
+        async function calculateTotal() {
+            if (!selectedPackage) return;
+            const res = await fetch('/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ packageType: selectedPackage, selectedAddons })
+            });
+            const data = await res.json();
+            currentTotal = data.total;
+            currentDeposit = data.deposit;
+            document.getElementById('invoiceDetails').innerHTML = data.details.join(' + <br>');
+            document.getElementById('totalPrice').innerText = `الإجمالي: ${data.total.toLocaleString()} جنيه`;
+            document.getElementById('depositPrice').innerText = `العربون 50%: ${data.deposit.toLocaleString()} جنيه`;
+        }
+
+        async function submitBooking() {
+            const booking = {
+                date: document.getElementById('date').value,
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                packageType: selectedPackage,
+                selectedAddons: selectedAddons,
+                total: currentTotal,
+                deposit: currentDeposit
+            };
+
+            if (!booking.date ||!booking.name ||!booking.phone ||!booking.packageType) {
+                document.getElementById('msg').innerText = '❌ املا كل البيانات أول';
+                return;
+            }
+
+            const res = await fetch('/api/book', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(booking)
+            });
+
+            if (res.ok) {
+                document.getElementById('msg').innerText = '✅ تم الحجز! حول العربون على 0912345678 وارسل الاشعار واتساب';
+                // هنا ممكن تفتح رابط Binance Pay للعربون
+            } else {
+                document.getElementById('msg').innerText = '❌ ' + await res.text();
+            }
+        }
+    </script>
+</body>
+</html>
